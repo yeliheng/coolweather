@@ -1,6 +1,7 @@
 package com.coolweather.android;
 
 import android.app.ProgressDialog;
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -18,6 +19,7 @@ import android.widget.Toast;
 import com.coolweather.android.db.City;
 import com.coolweather.android.db.County;
 import com.coolweather.android.db.Province;
+import com.coolweather.android.gson.Weather;
 import com.coolweather.android.util.HttpUtil;
 import com.coolweather.android.util.Utility;
 
@@ -81,6 +83,12 @@ public class ChooseAreaFragment extends Fragment {
                 }else if(currentLevel ==LEVEL_CITY){
                     selectedCity = cityList.get(pos);
                     queryCounties();//查询县
+                }else if(currentLevel == LEVEL_COUNTY){//点击县级数据时，自动获取天气id,并跳转到新的活动
+                    String weatherId = countyList.get(pos).getWeatherId();
+                    Intent intent = new Intent(getActivity(), WeatherActivity.class);
+                    intent.putExtra("weather_id",weatherId);
+                    startActivity(intent);
+                    getActivity().finish();
                 }
             }
         });
@@ -167,11 +175,12 @@ public class ChooseAreaFragment extends Fragment {
         HttpUtil.sendOkHttpRequest(address, new Callback() {//向服务器发送Http请求(OkHttp)
             @Override
             public void onFailure(Call call, IOException e) {//失败回调
+                e.printStackTrace();
                 getActivity().runOnUiThread(new Runnable() {//回到主线程来更新UI
                     @Override
                     public void run() {
                         closeProgressDialog();//关闭进度条
-                        Toast.makeText(getContext(),"内部错误，请求失败！",Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(),"哎呀,网络出问题了,获取不到数据",Toast.LENGTH_SHORT).show();
                     }
                 });
             }
