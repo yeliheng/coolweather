@@ -44,7 +44,7 @@ public class AutoUpdateService extends Service {
         int hour = Integer.parseInt(getSettings());
         updateWeather();//更新天气
         updateBingPic();//更新每日一图
-        sendNotification();//发送通知
+       // sendNotification();//发送通知
         AlarmManager manager = (AlarmManager) getSystemService(ALARM_SERVICE);//系统时间管理服务
         int anHour = hour * 60 * 60 * 1000;//八小时的毫秒数 时-分-秒-毫秒
        // Log.d("刷新频率","" + anHour);
