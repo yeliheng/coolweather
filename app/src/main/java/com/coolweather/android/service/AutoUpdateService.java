@@ -1,14 +1,22 @@
 package com.coolweather.android.service;
 
 import android.app.AlarmManager;
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.IBinder;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
+import android.provider.Settings;
+import android.support.v4.app.NotificationCompat;
+import android.util.Log;
+import android.widget.Toast;
 
+import com.coolweather.android.R;
 import com.coolweather.android.WeatherActivity;
 import com.coolweather.android.gson.Weather;
 import com.coolweather.android.util.HttpUtil;
@@ -33,10 +41,13 @@ public class AutoUpdateService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {//服务逻辑
+        int hour = Integer.parseInt(getSettings());
         updateWeather();//更新天气
         updateBingPic();//更新每日一图
+        sendNotification();//发送通知
         AlarmManager manager = (AlarmManager) getSystemService(ALARM_SERVICE);//系统时间管理服务
-        int anHour = 8 * 60 * 60 * 1000;//八小时的毫秒数
+        int anHour = hour * 60 * 60 * 1000;//八小时的毫秒数 时-分-秒-毫秒
+       // Log.d("刷新频率","" + anHour);
         long triggerAtTime = SystemClock.elapsedRealtime() + anHour;//触发时间
         Intent i = new Intent(this,AutoUpdateService.class);
         PendingIntent pi = PendingIntent.getService(this,0,i,0);
@@ -92,5 +103,20 @@ public class AutoUpdateService extends Service {
                 editor.apply();
             }
         });
+    }
+    private String getSettings(){//获取配置信息
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
+        String update_time = preferences.getString("update_time","8");//获取天气刷新频率，默认8
+        return update_time;
+    }
+    private void sendNotification(){//服务触发时发送通知
+        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        Notification notification = new NotificationCompat.Builder(getBaseContext())
+                .setContentTitle("天气更新通知")
+                .setContentText("天气信息已更新!")
+                .setWhen(System.currentTimeMillis())
+                .setSmallIcon(R.mipmap.logo)
+                .build();
+        manager.notify(1,notification);
     }
 }

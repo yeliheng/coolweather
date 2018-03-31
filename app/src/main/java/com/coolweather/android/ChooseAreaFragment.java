@@ -1,11 +1,22 @@
 package com.coolweather.android;
 
+import android.Manifest;
+import android.app.AlertDialog;
 import android.app.ProgressDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Binder;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
+import android.support.v4.content.ContextCompat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,6 +31,7 @@ import com.coolweather.android.db.City;
 import com.coolweather.android.db.County;
 import com.coolweather.android.db.Province;
 import com.coolweather.android.gson.Weather;
+import com.coolweather.android.util.APKVersionCodeUtils;
 import com.coolweather.android.util.HttpUtil;
 import com.coolweather.android.util.Utility;
 
@@ -33,7 +45,10 @@ import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Response;
 
+import static android.content.Context.CLIPBOARD_SERVICE;
+
 public class ChooseAreaFragment extends Fragment {
+    public static final int LEVEL_ITEM = 3;//ListView中的选择地区
     public static final int LEVEL_PROVINCE = 0;//省级
     public static final int LEVEL_CITY = 1;//市级
     public static final int LEVEL_COUNTY = 2;//县级
@@ -55,10 +70,11 @@ public class ChooseAreaFragment extends Fragment {
     * 县链表
     * */
     private List<County> countyList;
-    private Province selectedProvince;//选中的省份
+    private Province selectedProvince;//XC选中的省份
     private City selectedCity;//选中的市
     private int currentLevel;//当前选中级别
-
+   // private APKVersionCodeUtils versionCodeUtils;//版本信息获取
+    Update update = new Update();
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -77,7 +93,39 @@ public class ChooseAreaFragment extends Fragment {
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int pos, long l) {
-                if(currentLevel ==LEVEL_PROVINCE){
+                if(currentLevel == LEVEL_ITEM){
+                    switch (pos){
+                        case 0://选择地区
+                            queryProvinces();
+                            break;
+                        case 1://设置
+                            openSettingsActivity();
+                            break;
+                        case 2://关于软件
+                            showSoftInfo();
+                            break;
+                        case 3://检查更新
+                            //申请权限
+                            if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED){
+                                ActivityCompat.requestPermissions(getActivity(),new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},1);
+                            }else{
+                                update.checkUpdate(getContext());//检查更新
+                            }
+                            break;
+                        case 4://软件源码
+                            goToGithub();
+                            break;
+                        case 5://更新日志
+
+                            break;
+                        case 6://官网
+
+                            break;
+                        case 7://捐助
+                            donateMe();
+                            break;
+                    }
+                }else if(currentLevel ==LEVEL_PROVINCE){
                     selectedProvince = provinceList.get(pos);
                     queryCities();//查询城市
                 }else if(currentLevel ==LEVEL_CITY){
@@ -106,17 +154,41 @@ public class ChooseAreaFragment extends Fragment {
                     queryCities();
                 }else if(currentLevel == LEVEL_CITY){
                     queryProvinces();
+                }else if(currentLevel ==LEVEL_PROVINCE){
+                    queryItems();
                 }
             }
         });
-        queryProvinces();
+        queryItems();
+       // queryProvinces();//查询省份
     }
+    /*
+    * 滑动菜单内容(待添加)
+    * */
+        private void queryItems(){
+            titleText.setText("叫兽天气");
+            backButton.setVisibility(View.GONE);//关闭返回按钮
+            if(dataList.size() > 0){
+                dataList.clear();
+            }
+            dataList.add("选择地区");//0
+            dataList.add("设置");//1
+            dataList.add("关于软件");//2
+            dataList.add("检查更新");//3
+            dataList.add("软件源码");//4
+            dataList.add("更新日志");//5
+            dataList.add("官网");//6
+            dataList.add("捐助");//7
+            adapter.notifyDataSetChanged();//通知适配器更新数据
+            listView.setSelection(0);//光标移动到0
+            currentLevel = LEVEL_ITEM;
+        }
     /*
     * 查询中国所有的省，查询方式:数据库优先，失败时自动向服务器查询
     * */
     private void queryProvinces(){
         titleText.setText("中国");
-        backButton.setVisibility(View.GONE);
+        backButton.setVisibility(View.VISIBLE);
         provinceList = DataSupport.findAll(Province.class);
         if(provinceList.size() > 0){
             dataList.clear();
@@ -238,6 +310,135 @@ public class ChooseAreaFragment extends Fragment {
     private void closeProgressDialog(){
         if(progressDialog != null){
             progressDialog.dismiss();
+        }
+    }
+    public void showSoftInfo() {//显示软件信息
+        String versionName = APKVersionCodeUtils.getVerName(getContext());
+        final AlertDialog alertDialog = new AlertDialog.Builder(getContext())
+                .setTitle("软件信息")
+                .setMessage("本软件提供各地区天气查询服务\n" +
+                        "版本:" + versionName + "\n" +
+                        "☞开发人员:叫兽°\n" +
+                        "☞Email:yeliheng00@163.com\n" +
+                        "☞天气数据API来源:和风天气\n" +
+                        "☞背景图片API:微软Bing每日一图\n" +
+                        "☞软件源码已在GitHub开放\n" +
+                        "☞本软件受Apache2.0开源协议保护"
+                )
+                .setIcon(R.drawable.tip)
+                .setNegativeButton("确定", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                }).create();
+        alertDialog.show();
+
+    }
+    public void goToGithub(){//跳转到GitHub
+        AlertDialog alertDialog = new AlertDialog.Builder(getContext())
+                .setTitle("源码地址")
+                .setMessage("https://github.com/yeliheng/coolweather\n" +
+                        "你的关注就是对我最大的鼓励！")
+                .setNegativeButton("打开", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Intent intent= new Intent();
+                        intent.setAction("android.intent.action.VIEW");
+                        Uri content_url = Uri.parse("https://github.com/yeliheng/coolweather");
+                        intent.setData(content_url);
+                        startActivity(intent);
+                    }
+                })
+                .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                }).create();
+                alertDialog.show();
+    }
+    public void donateMe(){//捐助逻辑
+        AlertDialog alertDialog = new AlertDialog.Builder(getContext())
+                .setTitle("捐助我")
+                .setMessage("捐助的数额请随意，此资金将被用于维护项目以及服务器")
+                .setNegativeButton("支付宝", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        AlertDialog alertDialog = new AlertDialog.Builder(getContext())
+                                .setTitle("支付宝")
+                                .setMessage("yeliheng00@163.com")
+                                .setNegativeButton("复制", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        ClipData myClip;
+                                        ClipboardManager myClipboard;
+                                        myClipboard = (ClipboardManager) getContext().getSystemService(CLIPBOARD_SERVICE);
+                                        String text = "yeliheng00@163.com";//如果有内容直接添加就好
+                                        myClip = ClipData.newPlainText("text", text);//text是内容
+                                        myClipboard.setPrimaryClip(myClip);
+                                        Toast.makeText(getContext(),"已复制",Toast.LENGTH_SHORT).show();
+                                    }
+                                })
+                                .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        dialog.dismiss();
+                                    }
+                                }).create();
+                        alertDialog.show();
+                    }
+                })
+                .setPositiveButton("微信", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        AlertDialog alertDialog = new AlertDialog.Builder(getContext())
+                                .setTitle("微信")
+                                .setMessage("微信号:977782528")
+                                .setNegativeButton("复制", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        ClipData myClip;
+                                        ClipboardManager myClipboard;
+                                        myClipboard = (ClipboardManager) getContext().getSystemService(CLIPBOARD_SERVICE);
+                                        String text = "977782528";//如果有内容直接添加就好
+                                        myClip = ClipData.newPlainText("text", text);//text是内容
+                                        myClipboard.setPrimaryClip(myClip);
+                                        Toast.makeText(getContext(),"已复制",Toast.LENGTH_SHORT).show();
+                                    }
+                                })
+                                .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        dialog.dismiss();
+                                    }
+                                }).create();
+                        alertDialog.show();
+                    }
+                })
+                .setNeutralButton("确定", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                })
+                .create();
+        alertDialog.show();
+    }
+    private void openSettingsActivity(){//打开设置界面
+        Intent intent = new Intent(getActivity(),SettingsActivity.class);
+        startActivity(intent);
+    }
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {//提权回调
+        switch (requestCode){
+            case 1:
+                if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    update.checkUpdate(getContext());
+                }else{
+                    Toast.makeText(getContext(),"获取必要权限失败!请重新授权!",Toast.LENGTH_SHORT).show();
+                }
+                break;
         }
     }
 }
