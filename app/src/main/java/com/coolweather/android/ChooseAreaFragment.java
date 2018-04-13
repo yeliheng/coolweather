@@ -8,15 +8,18 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -119,7 +122,7 @@ public class ChooseAreaFragment extends Fragment {
 
                             break;
                         case 6://官网
-
+                            goToWebsite();
                             break;
                         case 7://捐助
                             donateMe();
@@ -136,10 +139,16 @@ public class ChooseAreaFragment extends Fragment {
                     if(getActivity() instanceof MainActivity) {//判断是不是MainActivity的实例
                         Intent intent = new Intent(getActivity(), WeatherActivity.class);
                         intent.putExtra("weather_id", weatherId);
+                        Log.d("MainActivity",intent.getStringExtra("new_weather_id") + "test");
                         startActivity(intent);
                         getActivity().finish();
                     }else if(getActivity() instanceof WeatherActivity){//判断是不是WeatherActivity的实例
                         WeatherActivity activity = (WeatherActivity) getActivity();
+                        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
+                        SharedPreferences.Editor editor = prefs.edit();
+                        editor.putString("new_weather_id",weatherId);//写入新的地区id缓存(刷新的时候用)
+                        editor.commit();
+                      //  Log.d("WeatherActivity",intent.getStringExtra("new_weather_id") + "test");
                         activity.drawerLayout.closeDrawers();//关闭滑动菜单
                         activity.swipeRefresh.setRefreshing(true);//显示刷新进度
                         activity.requestWeather(weatherId);//请求天气信息
@@ -423,6 +432,29 @@ public class ChooseAreaFragment extends Fragment {
                     }
                 })
                 .create();
+        alertDialog.show();
+    }
+    public void goToWebsite(){//跳转到官网
+        AlertDialog alertDialog = new AlertDialog.Builder(getContext())
+                .setTitle("官方网站")
+                .setMessage("http://www.ccyun.club\n" +
+                        "枫叶人工智能实验室")
+                .setNegativeButton("打开", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Intent intent= new Intent();
+                        intent.setAction("android.intent.action.VIEW");
+                        Uri content_url = Uri.parse("http://www.ccyun.club");
+                        intent.setData(content_url);
+                        startActivity(intent);
+                    }
+                })
+                .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                }).create();
         alertDialog.show();
     }
     private void openSettingsActivity(){//打开设置界面

@@ -15,6 +15,7 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -84,7 +85,7 @@ public class WeatherActivity extends AppCompatActivity {
         comfortText = findViewById(R.id.comfort_text);
         carWashText = findViewById(R.id.car_wash_text);
         sportText = findViewById(R.id.sport_text);
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);//存储数据到sd卡
+        final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);//存储数据到sd卡
         String weatherString = prefs.getString("weather",null);
         final String weatherId;
         String bingPic = prefs.getString("bing_pic",null);
@@ -107,8 +108,9 @@ public class WeatherActivity extends AppCompatActivity {
         }
         swipeRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
-            public void onRefresh() {
-                requestWeather(weatherId);
+            public void onRefresh() {//刷新逻辑
+                String newWeatherId = prefs.getString("new_weather_id",weatherId);//从缓存中取，避免刷新的时候数据被weatherId覆盖
+                requestWeather(newWeatherId);
             }
         });
         navButton.setOnClickListener(new View.OnClickListener() {
